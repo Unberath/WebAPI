@@ -26,7 +26,9 @@ import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.jasypt.encryption.pbe.PBEStringEncryptor;
 import org.jasypt.properties.PropertyValueEncryptionUtils;
 import org.ohdsi.sql.SqlTranslate;
+import org.ohdsi.webapi.common.SourceMapKey;
 import org.ohdsi.webapi.shiro.management.Security;
+import org.ohdsi.webapi.shiro.management.datasource.SourceAccessor;
 import org.ohdsi.webapi.source.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,15 +43,16 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static org.ohdsi.webapi.source.Source.IMPALA_DATASOURCE;
+
 @Path("/source/")
 @Component
 @Transactional
 public class SourceService extends AbstractDaoService {
 
-    public static final String SECURE_MODE_ERROR = "This feature requires the administrator to enable security for the application";
-    private static final String IMPALA_DATASOURCE = "impala";
-    private static final String KRB_REALM = "KrbRealm";
-    private static final String KRB_FQDN = "KrbHostFQDN";
+  public static final String SECURE_MODE_ERROR = "This feature requires the administrator to enable security for the application";
+  private static final String KRB_REALM = "KrbRealm";
+  private static final String KRB_FQDN = "KrbHostFQDN";
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
@@ -59,6 +62,12 @@ public class SourceService extends AbstractDaoService {
   private Environment env;
   @Autowired
   private ApplicationEventPublisher publisher;
+  @Autowired
+  private VocabularyService vocabularyService;
+
+  @Autowired
+  private SourceAccessor sourceAccessor;
+
   @Value("${datasource.ohdsi.schema}")
   private String schema;
 
@@ -151,11 +160,17 @@ public class SourceService extends AbstractDaoService {
     return cachedSources;
   }
 
+  public <T> Map<T, SourceInfo> getSourcesMap(SourceMapKey<T> mapKey) {
+
+    return getSources().stream().collect(Collectors.toMap(mapKey.getKeyFunc(), s -> s));
+  }
+
   @Path("refresh")
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Collection<SourceInfo> refreshSources() {
     cachedSources = null;
+    vocabularyService.clearVocabularyInfoCache();
 		this.ensureSourceEncrypted();
     return getSources();
   }
@@ -169,7 +184,7 @@ public class SourceService extends AbstractDaoService {
 
     for (Source source : sourceRepository.findAll()) {
       for (SourceDaimon daimon : source.getDaimons()) {
-        if (daimon.getDaimonType() == SourceDaimon.DaimonType.Vocabulary) {
+        if (daimon.getDaimonType() == SourceDaimon.DaimonType.Vocabulary && sourceAccessor.hasAccess(source)) {
           int daimonPriority = daimon.getPriority();
           if (daimonPriority >= priority) {
             priority = daimonPriority;
@@ -208,15 +223,19 @@ public class SourceService extends AbstractDaoService {
     if (!securityEnabled) {
       throw new NotAuthorizedException(SECURE_MODE_ERROR);
     }
+    Source sourceByKey = sourceRepository.findBySourceKey(request.getKey());
+    if (Objects.nonNull(sourceByKey)) {
+      throw new Exception("The source key has been already used.");
+    }
     Source source = conversionService.convert(request, Source.class);
     setImpalaKrbData(source, new Source(), file);
     Source saved = sourceRepository.save(source);
     String sourceKey = saved.getSourceKey();
     cachedSources = null;
     securityManager.addSourceRole(sourceKey);
-      SourceInfo sourceInfo = new SourceInfo(saved);
-      publisher.publishEvent(new AddDataSourceEvent(this, source.getSourceId(), source.getSourceName()));
-      return sourceInfo;
+    SourceInfo sourceInfo = new SourceInfo(saved);
+    publisher.publishEvent(new AddDataSourceEvent(this, source.getSourceId(), source.getSourceName()));
+    return sourceInfo;
   }
 
   @Path("{sourceId}")
@@ -281,7 +300,7 @@ public class SourceService extends AbstractDaoService {
     if (source != null) {
       final String sourceKey = source.getSourceKey();
       sourceRepository.delete(source);
-        publisher.publishEvent(new DeleteDataSourceEvent(this, sourceId, source.getSourceName()));
+      publisher.publishEvent(new DeleteDataSourceEvent(this, sourceId, source.getSourceName()));
       cachedSources = null;
       securityManager.removeSourceRole(sourceKey);
       return Response.ok().build();
