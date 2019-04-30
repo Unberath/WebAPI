@@ -4,6 +4,7 @@
 *.iml
 sandbox/
 /target/
+/WebAPIConfig/
 .settings
 .classpath
 .project
