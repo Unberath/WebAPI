@@ -114,8 +114,7 @@ public class PersonService extends AbstractDaoService {
 
         item.timeStamp = resultSet.getString("start_date");
         item.valueAsNumber = resultSet.getDouble("value_as_number");
-        if(item.domain == "observation") item.valueAsString = resultSet.getString("value_as_string");
-        else item.valueAsString = null;
+        item.valueAsString = resultSet.getString("value_as_string");
         item.valueAsConceptId = resultSet.getLong("value_as_concept_id");
         
         profile.records.add(item);
