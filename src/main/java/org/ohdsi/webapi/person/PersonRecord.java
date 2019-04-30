@@ -29,8 +29,8 @@ public class PersonRecord {
   public Timestamp endDate;
   public int startDay;
   public int endDay;
-  public string timeStamp;
+  public String timeStamp;
   public double valueAsNumber;
-  public string valueAsString;
+  public String valueAsString;
   public Long valueAsConceptId;
 }
