@@ -72,6 +72,8 @@ public class PersonService extends AbstractDaoService {
       @Override
       public Void mapRow(ResultSet resultSet, int arg1) throws SQLException {
         profile.yearOfBirth = resultSet.getInt("year_of_birth");
+        profile.monthOfBirth = resultSet.getInt("month_of_birth");
+        profile.dayOfBirth = resultSet.getInt("day_of_birth");
         profile.gender = resultSet.getString("gender");
         return null;
       }
@@ -109,6 +111,12 @@ public class PersonService extends AbstractDaoService {
         item.domain = resultSet.getString("domain");
         item.startDate = resultSet.getTimestamp("start_date");
         item.endDate = resultSet.getTimestamp("end_date");
+
+        item.timeStamp = resultSet.getString("start_date");
+        item.valueAsNumber = resultSet.getDouble("value_as_number");
+        if(item.domain == "observation") item.valueAsString = resultSet.getString("value_as_string");
+        else item.valueAsString = null;
+        item.valueAsConceptId = resultSet.getLong("value_as_concept_id");
         
         profile.records.add(item);
         return null;

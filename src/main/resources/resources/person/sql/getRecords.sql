@@ -26,7 +26,7 @@ where person_id = @personId
 
 union  all
 
-select 'observation' as "domain", observation_concept_id concept_id, concept_name, observation_date start_date, observation_date end_date 
+select 'observation' as "domain", observation_concept_id concept_id, concept_name, observation_date start_date, observation_date end_date, value_as_number, value_as_string, value_as_concept_id
 from @tableQualifier.observation
 join @tableQualifier.concept c on c.concept_id = observation.observation_concept_id
 where person_id = @personId  
@@ -47,7 +47,7 @@ where person_id = @personId
 
 union  all
 
-select 'measurement' as "domain", measurement_concept_id concept_id, concept_name, measurement_date start_date, measurement_date end_date
+select 'measurement' as "domain", measurement_concept_id concept_id, concept_name, measurement_date start_date, measurement_date end_date, value_as_number, value_as_concept_id
 from @tableQualifier.measurement m
 join @tableQualifier.concept c on m.measurement_concept_id = c.concept_id
 where person_id = @personId

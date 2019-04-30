@@ -30,6 +30,8 @@ public class PersonProfile {
   
   public String gender;
   public int yearOfBirth;
+  public int monthOfBirth;
+  public int dayOfBirth;
 
   public PersonProfile() {
     records = new ArrayList<>();
